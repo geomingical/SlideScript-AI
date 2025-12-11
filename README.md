@@ -244,13 +244,13 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ---
 
-## 📞 Support
+## Support
 
 If you encounter any issues or have questions:
 
 - 🐛 [Report a Bug](https://github.com/yourusername/slidescript-ai/issues)
 - 💡 [Request a Feature](https://github.com/yourusername/slidescript-ai/issues)
-- 📧 Contact: your.email@example.com
+- 📧 Contact: geomingical@gmail.com
 
 ---
 
