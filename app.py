@@ -1,6 +1,6 @@
 """
-演講逐字稿生成器 - Streamlit 版本
-使用 GPT-5.1/o3/GPT-4o 等模型，將投影片 PDF 轉換為專業演講逐字稿
+Speech Transcript Generator - Streamlit Version
+Convert slide PDFs into professional speech transcripts using GPT-5.1/o3/GPT-4o models
 """
 
 import os
@@ -14,15 +14,15 @@ from openai import OpenAI
 
 
 class PDFProcessor:
-    """處理 PDF 投影片的類別"""
+    """Class for processing PDF slides"""
     
     def __init__(self):
         self.slides_content = []
     
     def extract_slides(self, pdf_file) -> List[Dict[str, str]]:
-        """從 PDF 提取每一頁的內容"""
+        """Extract content from each page of the PDF"""
         try:
-            # 儲存上傳的 PDF
+            # Save uploaded PDF
             pdf_path = "/tmp/presentation.pdf"
             with open(pdf_path, 'wb') as f:
                 f.write(pdf_file.read())
@@ -31,7 +31,7 @@ class PDFProcessor:
             
             if len(doc) == 0:
                 doc.close()
-                raise Exception("此 PDF 檔案不包含任何頁面")
+                raise Exception("This PDF file does not contain any pages")
             
             slides = []
             
@@ -43,7 +43,7 @@ class PDFProcessor:
                 
                 slides.append({
                     "page": page_num + 1,
-                    "text": text if text else "[此頁無文字內容]",
+                    "text": text if text else "[No text content on this page]",
                     "image": base64.b64encode(img_data).decode()
                 })
             
@@ -52,30 +52,30 @@ class PDFProcessor:
             return slides
             
         except Exception as e:
-            raise Exception(f"PDF 處理錯誤: {str(e)}")
+            raise Exception(f"PDF processing error: {str(e)}")
 
 
 class AudioAnalyzer:
-    """使用 GPT-4o Audio API 分析音頻並計算語速"""
+    """Analyze audio and calculate speech rate using GPT-4o Audio API"""
     
     def __init__(self, api_key: str):
         self.client = OpenAI(api_key=api_key)
         self.words_per_minute = None
     
     def _convert_to_mp3(self, audio_path: str) -> str:
-        """將音頻轉換為 mp3 格式"""
+        """Convert audio format to mp3"""
         try:
             audio = AudioSegment.from_file(audio_path)
             mp3_path = "/tmp/converted_audio.mp3"
             audio.export(mp3_path, format="mp3", bitrate="128k")
             return mp3_path
         except Exception as e:
-            raise Exception(f"音頻格式轉換錯誤: {str(e)}")
+            raise Exception(f"Audio format conversion error: {str(e)}")
     
     def analyze_audio(self, audio_file) -> float:
-        """使用 GPT-4o Audio API 分析音頻並計算語速"""
+        """Analyze audio and calculate speech rate using GPT-4o Audio API"""
         try:
-            # 儲存上傳的音頻
+            # Save uploaded audio
             audio_path = "/tmp/audio_sample.m4a"
             with open(audio_path, 'wb') as f:
                 f.write(audio_file.read())
@@ -84,14 +84,14 @@ class AudioAnalyzer:
             duration_seconds = len(audio) / 1000.0
             
             if duration_seconds < 5:
-                raise Exception("音頻時長過短（少於 5 秒），建議上傳 20 秒左右的音頻")
+                raise Exception("Audio duration too short (less than 5 seconds), suggest uploading around 20 seconds")
             if duration_seconds > 120:
-                raise Exception("音頻時長過長（超過 2 分鐘），請上傳 20-60 秒的音頻樣本")
+                raise Exception("Audio duration too long (over 2 minutes), please upload a 20-60 second audio sample")
             
-            # 轉換為 mp3
+            # Convert to mp3
             mp3_path = self._convert_to_mp3(audio_path)
             
-            # 使用 GPT-4o Audio API 進行轉錄
+            # Transcribe using GPT-4o Audio API
             with open(mp3_path, 'rb') as audio_file:
                 transcription = self.client.audio.transcriptions.create(
                     model="whisper-1",
@@ -102,14 +102,14 @@ class AudioAnalyzer:
             text = transcription.text
             
             if not text or len(text.strip()) == 0:
-                raise Exception("無法識別音頻內容，請確保音頻清晰且包含語音")
+                raise Exception("Unable to recognize audio content, please ensure audio is clear and contains speech")
             
-            # 計算字數
+            # Calculate word count
             char_count = len([c for c in text if c.strip() and not c.isspace()])
             wpm = (char_count / duration_seconds) * 60
             self.words_per_minute = wpm
             
-            # 清理暫存檔
+            # Clean up temporary files
             if os.path.exists(audio_path):
                 os.remove(audio_path)
             if os.path.exists(mp3_path):
@@ -118,11 +118,11 @@ class AudioAnalyzer:
             return wpm
             
         except Exception as e:
-            raise Exception(f"音頻分析錯誤: {str(e)}")
+            raise Exception(f"Audio analysis error: {str(e)}")
 
 
 class TranscriptGenerator:
-    """使用 OpenAI Vision 模型生成演講逐字稿"""
+    """Generate speech transcript using OpenAI Vision models"""
     
     def __init__(self, api_key: str):
         self.client = OpenAI(api_key=api_key)
@@ -141,10 +141,10 @@ class TranscriptGenerator:
         expert_role: Optional[str] = None,
         include_tips: bool = False
     ) -> str:
-        """生成演講逐字稿"""
+        """Generate speech transcript"""
         try:
             if not slides or len(slides) == 0:
-                raise Exception("沒有投影片內容，請先上傳 PDF 檔案")
+                raise Exception("No slide content, please upload a PDF file first")
             
             target_words = int(target_duration * words_per_minute)
             words_per_slide = target_words // len(slides)
@@ -157,50 +157,50 @@ class TranscriptGenerator:
             if include_tips:
                 tips_instruction = """
 
-【演講技巧建議】
-請在逐字稿中適當位置加入以下演講技巧建議（使用 [方括號] 標註）：
-- [手勢：展開雙手] - 在強調重點時
-- [手勢：指向投影片] - 在說明圖表時
-- [語氣：提高音量] - 在關鍵訊息時
-- [語氣：放慢速度] - 在重要概念時
-- [暫停 2-3 秒] - 在段落轉換時
-- [眼神接觸] - 在與聽眾互動時
-- [走動：移向舞台中央] - 在開場或總結時
+【Speech Tips Suggestions】
+Please include the following speech tips in appropriate places within the transcript (marked with [square brackets]):
+- [Gesture: Open arms] - When emphasizing a key point
+- [Gesture: Point to slide] - When explaining a chart
+- [Tone: Raise volume] - For key messages
+- [Tone: Slow down] - For important concepts
+- [Pause 2-3 seconds] - During section transitions
+- [Eye contact] - When interacting with the audience
+- [Movement: Move to center stage] - During opening or closing
 """
             
             user_content = [
                 {
                     "type": "text",
                     "text": f"""
-請根據以下投影片圖片，生成一份完整的演講逐字稿。
+Please generate a complete speech transcript based on the following slide images.
 
-演講參數：
-- 總時長：{target_duration} 分鐘
-- 語速：每分鐘約 {int(words_per_minute)} 字
-- 目標總字數：約 {target_words} 字
-- 每頁建議字數：約 {words_per_slide} 字
-- 輸出語言：{language}{tips_instruction}
+Speech Parameters:
+- Total Duration: {target_duration} minutes
+- Speech Rate: Approximately {int(words_per_minute)} words per minute
+- Target Total Word Count: Approximately {target_words} words
+- Suggested Words per Slide: Approximately {words_per_slide} words
+- Output Language: {language}{tips_instruction}
 
-輸出格式要求：
+Output Format Requirements:
 Slide 1
-[第一頁的演講內容]
+[Speech content for slide 1]
 
 Slide 2
-[第二頁的演講內容]
+[Speech content for slide 2]
 
-...以此類推
+...and so on
 
-請確保：
-1. 仔細觀察每頁投影片的視覺元素、圖表、文字
-2. 每頁的逐字稿自然流暢，講解投影片上的重點
-3. 內容銜接順暢，有開場和結尾
-4. 符合指定的演講風格和語氣
-5. 總字數控制在 {target_words} 字左右（可上下浮動10%）
+Please ensure:
+1. Carefully observe the visual elements, charts, and text on each slide
+2. The transcript for each page is natural and smooth, explaining the key points on the slide
+3. Content flows smoothly with a clear opening and closing
+4. Matches the specified speech style and tone
+5. Total word count is around {target_words} words (allow 10% variance)
 """
                 }
             ]
             
-            # 添加所有投影片圖片
+            # Add all slide images
             for slide in slides:
                 user_content.append({
                     "type": "image_url",
@@ -210,7 +210,7 @@ Slide 2
                     }
                 })
             
-            # 呼叫 OpenAI Vision API
+            # Call OpenAI Vision API
             response = self.client.chat.completions.create(
                 model=model_name,
                 messages=[
@@ -229,13 +229,13 @@ Slide 2
         except Exception as e:
             error_msg = str(e)
             if "API key" in error_msg or "authentication" in error_msg.lower():
-                raise Exception("❌ API Key 錯誤，請確認您的 OpenAI API Key 是否正確")
+                raise Exception("❌ API Key error, please check if your OpenAI API Key is correct")
             elif "rate limit" in error_msg.lower():
-                raise Exception("❌ API 請求過於頻繁，請稍後再試")
+                raise Exception("❌ API request limit reached, please try again later")
             elif "quota" in error_msg.lower():
-                raise Exception("❌ API 額度不足，請檢查您的 OpenAI 帳戶餘額")
+                raise Exception("❌ API quota exceeded, please check your OpenAI account balance")
             else:
-                raise Exception(f"逐字稿生成錯誤: {error_msg}")
+                raise Exception(f"Transcript generation error: {error_msg}")
     
     def _create_system_prompt(
         self,
@@ -247,74 +247,74 @@ Slide 2
         words_per_slide: int,
         include_tips: bool = False
     ) -> str:
-        """建立系統提示"""
+        """Create system prompt"""
         
         style_descriptions = {
-            "活潑": "使用輕鬆、活潑的語氣，適度加入互動和幽默元素",
-            "嚴肅": "使用正式、專業的語氣，保持學術嚴謹性",
-            "激勵": "使用鼓舞人心的語言，充滿正能量和動力",
-            "教學": "使用清晰、易懂的解釋方式，像是在教導學生",
-            "對話": "使用對話式的語氣，如同與聽眾面對面交談"
+            "Lively": "Use a relaxed, lively tone with appropriate interactive and humorous elements",
+            "Serious": "Use a formal, professional tone maintaining academic rigor",
+            "Motivational": "Use inspiring language full of positive energy and motivation",
+            "Educational": "Use clear, easy-to-understand explanations, as if teaching students",
+            "Conversational": "Use a conversational tone, as if talking face-to-face with the audience"
         }
         
         language_instructions = {
-            "繁體中文": "使用繁體中文輸出",
-            "英文": "使用英文輸出",
-            "簡體中文": "使用簡體中文輸出",
-            "日文": "使用日文輸出",
-            "韓文": "使用韓文輸出",
-            "西班牙文": "使用西班牙文輸出",
-            "法文": "使用法文輸出",
-            "德文": "使用德文輸出"
+            "Traditional Chinese": "Output in Traditional Chinese",
+            "English": "Output in English",
+            "Simplified Chinese": "Output in Simplified Chinese",
+            "Japanese": "Output in Japanese",
+            "Korean": "Output in Korean",
+            "Spanish": "Output in Spanish",
+            "French": "Output in French",
+            "German": "Output in German"
         }
         
         role_intro = ""
         if expert_role:
-            role_intro = f"你是一位{expert_role}，"
+            role_intro = f"You are a {expert_role}, "
         
-        style_desc = style_descriptions.get(style, "使用自然流暢的語氣")
-        lang_inst = language_instructions.get(language, "使用繁體中文輸出")
+        style_desc = style_descriptions.get(style, "Use a natural and smooth tone")
+        lang_inst = language_instructions.get(language, "Output in Traditional Chinese")
         
         tips_requirement = ""
         if include_tips:
             tips_requirement = """
-7. 在適當位置加入演講技巧建議，使用 [方括號] 標註，包括：
-   - 手勢建議（如：展開雙手、指向投影片、握拳強調）
-   - 語氣建議（如：提高音量、放慢速度、加重語氣）
-   - 暫停時機（如：[暫停 2-3 秒]）
-   - 肢體語言（如：眼神接觸、走動、身體前傾）
-   這些建議應自然融入逐字稿中，幫助演講者更好地傳達訊息
+7. Include speech tips suggestions in appropriate places, marked with [square brackets], including:
+   - Gesture suggestions (e.g., open arms, point to slide, clench fist for emphasis)
+   - Tone suggestions (e.g., raise volume, slow down, emphasize)
+   - Pause timing (e.g., [Pause 2-3 seconds])
+   - Body language (e.g., eye contact, movement, lean forward)
+   These suggestions should blend naturally into the transcript to help the speaker better convey the message
 """
         
         return f"""
-{role_intro}你是一位經驗豐富的演講者和內容創作專家。
+{role_intro}You are an experienced speaker and content creation expert.
 
-演講主題：{topic}
-目標聽眾：{audience}
-演講風格：{style_desc}
-語言要求：{lang_inst}
+Speech Topic: {topic}
+Target Audience: {audience}
+Speech Style: {style_desc}
+Language Requirement: {lang_inst}
 
-你的任務是根據提供的投影片內容，創作一份自然、流暢、引人入勝的演講逐字稿。
+Your task is to create a natural, smooth, and engaging speech transcript based on the provided slide content.
 
-要求：
-1. 內容必須忠於投影片，但要用口語化的方式表達
-2. 每頁約 {words_per_slide} 字，可根據內容重要性調整
-3. 開場要吸引人，結尾要有力
-4. 適時加入過渡語，讓內容銜接流暢
-5. 符合指定的演講風格和目標聽眾
-6. 確保內容專業準確，同時易於理解{tips_requirement}
+Requirements:
+1. Content must be faithful to the slides but expressed in spoken language
+2. Approximately {words_per_slide} words per page, adjustable based on content importance
+3. Opening must be attractive, closing must be powerful
+4. Add transition phrases appropriately to ensure smooth flow
+5. Match the specified speech style and target audience
+6. Ensure content is professional and accurate, yet easy to understand{tips_requirement}
 """
 
 
-# Streamlit 主應用程式
+# Streamlit Main Application
 def main():
     st.set_page_config(
-        page_title="演講逐字稿生成器",
+        page_title="Speech Transcript Generator",
         page_icon="🎤",
         layout="wide"
     )
     
-    # 自定義 CSS
+    # Custom CSS
     st.markdown("""
     <style>
     .main-header {
@@ -343,38 +343,38 @@ def main():
     </style>
     """, unsafe_allow_html=True)
     
-    # 標題
+    # Header
     st.markdown("""
     <div class="main-header">
-        <h1>🎤 演講逐字稿生成器</h1>
-        <p>運用 AI Agent 技術，將投影片轉換為自然流暢的演講逐字稿</p>
+        <h1>🎤 Speech Transcript Generator</h1>
+        <p>Using AI Agent technology to convert slides into natural, smooth speech transcripts</p>
     </div>
     """, unsafe_allow_html=True)
     
-    # 側邊欄 - API 設定
+    # Sidebar - API Settings
     with st.sidebar:
-        st.header("⚙️ 設定")
+        st.header("⚙️ Settings")
         api_key = st.text_input(
             "OpenAI API Key",
             type="password",
-            help="請輸入您的 OpenAI API Key"
+            help="Please enter your OpenAI API Key"
         )
         
         st.markdown("---")
         st.markdown("""
-        ### 📋 使用步驟
-        1. 輸入 API Key
-        2. 上傳投影片 PDF
-        3. 設定演講參數
-        4. 點擊生成按鈕
-        5. 下載逐字稿
+        ### 📋 Usage Steps
+        1. Enter API Key
+        2. Upload Slide PDF
+        3. Set Speech Parameters
+        4. Click Generate Button
+        5. Download Transcript
         """)
     
     if not api_key:
-        st.warning("⚠️ 請在左側輸入 OpenAI API Key")
+        st.warning("⚠️ Please enter OpenAI API Key in the sidebar")
         return
     
-    # 初始化 Session State
+    # Initialize Session State
     if 'pdf_processor' not in st.session_state:
         st.session_state.pdf_processor = PDFProcessor()
     if 'audio_analyzer' not in st.session_state:
@@ -384,59 +384,59 @@ def main():
     if 'current_wpm' not in st.session_state:
         st.session_state.current_wpm = 200
     
-    # 主要內容區域
+    # Main Content Area
     col1, col2 = st.columns([1, 1])
     
     with col1:
-        st.subheader("📄 步驟 1: 上傳投影片 PDF")
-        pdf_file = st.file_uploader("選擇 PDF 檔案", type=['pdf'])
+        st.subheader("📄 Step 1: Upload Slide PDF")
+        pdf_file = st.file_uploader("Select PDF File", type=['pdf'])
         
         if pdf_file:
             try:
                 slides = st.session_state.pdf_processor.extract_slides(pdf_file)
-                st.success(f"✅ 已載入 {len(slides)} 頁投影片")
+                st.success(f"✅ Loaded {len(slides)} slides")
             except Exception as e:
                 st.error(f"❌ {str(e)}")
         
         st.markdown("---")
-        st.subheader("⏱️ 步驟 2: 設定演講時間")
-        duration = st.number_input("演講時長（分鐘）", min_value=1, max_value=180, value=10)
+        st.subheader("⏱️ Step 2: Set Speech Duration")
+        duration = st.number_input("Duration (minutes)", min_value=1, max_value=180, value=10)
     
     with col2:
-        st.subheader("🎙️ 步驟 3: 設定語速")
+        st.subheader("🎙️ Step 3: Set Speech Rate")
         speed_option = st.selectbox(
-            "選擇語速",
-            ["慢速 (150 字/分)", "中速 (200 字/分)", "快速 (250 字/分)", "自動分析"]
+            "Select Speech Rate",
+            ["Slow (150 wpm)", "Medium (200 wpm)", "Fast (250 wpm)", "Auto Analysis"]
         )
         
-        if speed_option == "自動分析":
-            audio_file = st.file_uploader("上傳 20 秒音頻樣本", type=['mp3', 'm4a', 'wav'])
-            if audio_file and st.button("🎵 開始分析語速"):
+        if speed_option == "Auto Analysis":
+            audio_file = st.file_uploader("Upload 20s audio sample", type=['mp3', 'm4a', 'wav'])
+            if audio_file and st.button("🎵 Start Speech Rate Analysis"):
                 try:
-                    with st.spinner("分析中..."):
+                    with st.spinner("Analyzing..."):
                         wpm = st.session_state.audio_analyzer.analyze_audio(audio_file)
                         st.session_state.current_wpm = int(wpm)
-                        st.success(f"✅ 您的語速：{st.session_state.current_wpm} 字/分鐘")
+                        st.success(f"✅ Your Speech Rate: {st.session_state.current_wpm} words/min")
                 except Exception as e:
                     st.error(f"❌ {str(e)}")
         else:
-            wpm_map = {"慢速 (150 字/分)": 150, "中速 (200 字/分)": 200, "快速 (250 字/分)": 250}
+            wpm_map = {"Slow (150 wpm)": 150, "Medium (200 wpm)": 200, "Fast (250 wpm)": 250}
             st.session_state.current_wpm = wpm_map[speed_option]
     
     st.markdown("---")
     
-    # 模型選擇
-    st.subheader("🤖 步驟 4: 選擇 AI 模型")
-    st.markdown('<div class="info-box">💡 <strong>GPT-5.1</strong> 具備最強大的多模態理解能力，能深度分析圖片與文字</div>', unsafe_allow_html=True)
+    # Model Selection
+    st.subheader("🤖 Step 4: Select AI Model")
+    st.markdown('<div class="info-box">💡 <strong>GPT-5.1</strong> possesses the strongest multimodal understanding capabilities, enabling deep analysis of images and text</div>', unsafe_allow_html=True)
     
     col3, col4 = st.columns(2)
     with col3:
         model = st.selectbox(
-            "AI 模型",
-            ["GPT-5.1 ⭐ 推薦", "o3", "GPT-4o", "GPT-4o-mini"]
+            "AI Model",
+            ["GPT-5.1 ⭐ Recommended", "o3", "GPT-4o", "GPT-4o-mini"]
         )
         model_map = {
-            "GPT-5.1 ⭐ 推薦": "gpt-5.1",
+            "GPT-5.1 ⭐ Recommended": "gpt-5.1",
             "o3": "o3",
             "GPT-4o": "gpt-4o",
             "GPT-4o-mini": "gpt-4o-mini"
@@ -444,44 +444,44 @@ def main():
         selected_model = model_map[model]
     
     with col4:
-        style = st.selectbox("演講風格", ["活潑", "嚴肅", "激勵", "教學", "對話"])
+        style = st.selectbox("Speech Style", ["Lively", "Serious", "Motivational", "Educational", "Conversational"])
     
     st.markdown("---")
     
-    # 演講資訊
-    st.subheader("📝 步驟 5: 填寫演講資訊")
+    # Speech Information
+    st.subheader("📝 Step 5: Fill in Speech Info")
     
     col5, col6 = st.columns(2)
     with col5:
-        topic = st.text_input("演講題目", placeholder="例如：人工智慧在教育中的應用")
+        topic = st.text_input("Speech Topic", placeholder="e.g., Application of AI in Education")
         language = st.selectbox(
-            "輸出語言",
-            ["繁體中文", "英文", "簡體中文", "日文", "韓文", "西班牙文", "法文", "德文"]
+            "Output Language",
+            ["Traditional Chinese", "English", "Simplified Chinese", "Japanese", "Korean", "Spanish", "French", "German"]
         )
     
     with col6:
-        audience = st.text_input("目標聽眾", placeholder="例如：大學生、教師、科技愛好者")
+        audience = st.text_input("Target Audience", placeholder="e.g., University Students, Teachers, Tech Enthusiasts")
         expert_role = st.text_input(
-            "專家角色（選填）",
-            placeholder="例如：資深AI研究員、教育心理學博士",
-            help="AI 會扮演您指定的專家身份來撰寫逐字稿"
+            "Expert Role (Optional)",
+            placeholder="e.g., Senior AI Researcher, PhD in Educational Psychology",
+            help="AI will act as the expert you specify to write the transcript"
         )
     
-    include_tips = st.checkbox("包含演講技巧建議（手勢、語氣、暫停等）", value=True)
+    include_tips = st.checkbox("Include speech tips suggestions (gestures, tone, pauses, etc.)", value=True)
     
     st.markdown("---")
     
-    # 生成按鈕
-    if st.button("🚀 生成逐字稿", type="primary"):
+    # Generate Button
+    if st.button("🚀 Generate Transcript", type="primary"):
         if not pdf_file:
-            st.error("❌ 請先上傳 PDF 投影片")
+            st.error("❌ Please upload PDF slides first")
         elif not topic:
-            st.error("❌ 請填寫演講題目")
+            st.error("❌ Please fill in the speech topic")
         elif not audience:
-            st.error("❌ 請填寫目標聽眾")
+            st.error("❌ Please fill in the target audience")
         else:
             try:
-                with st.spinner("🔄 正在生成逐字稿，請稍候..."):
+                with st.spinner("🔄 Generating transcript, please wait..."):
                     transcript = st.session_state.transcript_generator.generate_transcript(
                         slides=st.session_state.pdf_processor.slides_content,
                         target_duration=duration,
@@ -495,23 +495,23 @@ def main():
                         include_tips=include_tips
                     )
                     
-                    st.success("✅ 逐字稿生成完成！")
+                    st.success("✅ Transcript Generation Complete!")
                     
-                    # 顯示逐字稿
-                    st.markdown("### 📄 生成的逐字稿")
+                    # Display Transcript
+                    st.markdown("### 📄 Generated Transcript")
                     st.text_area("", transcript, height=400)
                     
-                    # 下載按鈕
+                    # Download Button
                     filename = f"transcript_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
                     st.download_button(
-                        label="📥 下載逐字稿",
+                        label="📥 Download Transcript",
                         data=transcript,
                         file_name=filename,
                         mime="text/plain"
                     )
                     
             except Exception as e:
-                st.error(f"❌ 生成失敗：{str(e)}")
+                st.error(f"❌ Generation Failed: {str(e)}")
 
 
 if __name__ == "__main__":
