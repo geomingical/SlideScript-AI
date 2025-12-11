@@ -29,12 +29,29 @@
 
 ---
 
+## � Language Versions
+
+This project provides **two notebook versions** for different users:
+
+- **`presentation_transcript_generator_zh-TW.ipynb`** - Traditional Chinese (繁體中文)
+  - Code comments and docstrings in Traditional Chinese
+  - For Taiwanese and Chinese-speaking developers
+  
+- **`presentation_transcript_generator_en.ipynb`** - English
+  - Code comments and docstrings in English
+  - For international developers
+
+> **Note**: Both versions have **identical functionality**. All Chinese UI elements are preserved for the best user experience.
+
+---
+
 ## 🚀 Quick Start
 
 ### Option 1: Google Colab (Recommended for Beginners)
 
 1. Open the notebook in Google Colab:
-   - Upload `presentation_transcript_generator.ipynb` to your Google Drive
+   - **Chinese version**: Upload `presentation_transcript_generator_zh-TW.ipynb`
+   - **English version**: Upload `presentation_transcript_generator_en.ipynb`
    - Open with Google Colab
    
 2. Set your OpenAI API Key:
